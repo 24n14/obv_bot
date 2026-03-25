@@ -1,18 +1,15 @@
 import time
 
 import ccxt
-from ccxt.base.types import OrderRequest
 from ccxt.base.errors import BadRequest
 
 import handlers
 
 
 class Exchange:
-	def __init__(self, api_key, api_secret, leverage, volume):
+	def __init__(self, api_key, api_secret):
 		self.api_key = api_key
 		self.api_secret = api_secret
-		self.leverage = leverage
-		self.volume = volume
 		self.api_params = {
 			"apiKey": self.api_key,
 			"secret": self.api_secret,
@@ -22,6 +19,14 @@ class Exchange:
 		self.cex.enable_demo_trading(True)
 
 	@handlers.retry
+	def get_balance(self, token):
+		return self.cex.fetch_balance()[token]['free']
+
+	@handlers.retry
+	def get_price(self, ticker):
+		return self.cex.fetch_ticker(ticker)['last']
+
+	@handlers.retry
 	def get_btc_tickers(self):
 		tickers = self.cex.fetch_markets()
 		tickers = [i['symbol'] for i in tickers if (i['symbol'][:8] == 'BTC/USDT' and i['symbol'][-1] not in ('P', 'C'))
@@ -29,38 +34,54 @@ class Exchange:
 		return tickers
 
 	@handlers.retry
-	def get_ohlcv(self, timeframe) -> dict:
+	def get_ohlcv(self, timeframe, limit) -> dict:
 		tickers = self.get_btc_tickers()
-		candles = {i: self.cex.fetch_ohlcv(i, timeframe, limit=300) for i in tickers}
+		candles = {i: self.cex.fetch_ohlcv(i, timeframe, limit=limit) for i in tickers}
 		return candles
 
 	@handlers.retry
-	def preparation_derivatives(self):
-		cex_tickers = self.get_btc_tickers() # Проверить на контракт
-		for token in cex_tickers:
-			try:
-				self.cex.set_margin_mode('isolated', token, params={'leverage': self.leverage})
-				self.cex.set_leverage(symbol=token, leverage=self.leverage)
-			except BadRequest:
-				pass
+	def preparation_derivative(self, ticker, leverage):
+		try:
+			self.cex.set_margin_mode('isolated', ticker, params={'leverage': leverage})
+			self.cex.set_leverage(symbol=ticker, leverage=leverage)
+		except BadRequest:
+			pass
 
 	@handlers.retry
-	def create_orders(self, ticker, side: str, amount: float): # amount в BTC
+	def get_position(self, symbol):
+		position = self.cex.fetch_position(symbol)
+		if not position['contracts']:
+			return None
+		return ['buy' if position['side'] == 'long' else 'sell', position['contracts'] * position['contractSize']]
+
+	@handlers.retry
+	def get_last_order(self, ticker):
+		timestamp = (int(time.time()) - 14700) * 1000 # 4 часа 5 минут
+		orders = self.cex.fetch_closed_orders(ticker, since=timestamp)[-1]
+		if not orders['amount']:
+			return None
+		return [orders['side'], orders['filled']]
+
+	@handlers.retry
+	def create_orders(self, ticker, side: str, amount: float):  # amount в BTC
 		orders = []
-		price = self.cex.fetch_ticker(ticker)['last']
-		for i in range(-2, 2):
-			params = {}
-			orders.append(OrderRequest(symbol=ticker, type='limit', side=side, amount=amount, price=price*(1-i/1000), params=params)) # 1000 - десятая процента
-		orders = self.cex.create_orders(orders)
+		price = self.get_price(ticker)
+		for i in range(-1, 2):
+			orders.append(self.cex.create_order(symbol=ticker,
+			                      type='limit',
+			                      side=side,
+			                      amount=amount,
+			                      price=price * (1 - i*2 / 1000)))  # 1000 - десятая процента
 		return [i['id'] for i in orders]
 
 	@handlers.retry
-	def wait_close_one_order(self, order_ids, ticker):
+	def wait_close_one_order(self, ticker, order_ids):
 		while True:
 			closed_orders = self.cex.fetch_closed_orders(ticker, limit=10)
 			closed_orders_id = [i['id'] for i in closed_orders]
-			if [i for i in order_ids if i in closed_orders_id]:
-				break
+			closed_order_id = [i for i in order_ids if i in closed_orders_id]
+			if closed_order_id:
+				return closed_order_id
 			time.sleep(0.5)
 
 	@handlers.retry

@@ -1,7 +1,5 @@
-import asyncio
 import configparser
 import functools
-import inspect
 import pathlib
 import time
 from asyncio import CancelledError
@@ -36,40 +34,32 @@ class ConfigHandler:
 
 	def get_indicator_settings(self) -> dict:
 		return {"tf": self.config['INDICATOR']['timeframe'],
-		        "obv_length": self.config['INDICATOR']['obv_length'],
-		        "ma_type": self.config['INDICATOR']['ma_type'],
-		        "ma_length": self.config['INDICATOR']['ma_length'],
-		        "macd_slow_length": self.config['INDICATOR']['macd_slow_length'],
-		        "len5": self.config['INDICATOR']['len5'],
+		        "obv_length": int(self.config['INDICATOR']['obv_length']),
+		        "macd_fast": int(self.config['INDICATOR']['macd_fast']),
+		        "macd_slow": int(self.config['INDICATOR']['macd_slow']),
+		        "macd_signal": int(self.config['INDICATOR']['macd_signal']),
+		        "stoch_k": int(self.config['INDICATOR']['stoch_k']),
+		        "stoch_d": int(self.config['INDICATOR']['stoch_d']),
+		        "stoch_smooth": int(self.config['INDICATOR']['stoch_smooth']),
+		        "sma_lenght": int(self.config['INDICATOR']['sma_lenght']),
 		        "period": int(self.config['INDICATOR']['period'])}
 
+	def get_indicator_weights_settings(self) -> dict:
+		return {"macd": float(self.config['INDICATOR.WEIGHTS']['macd']),
+		        "stochastic": float(self.config['INDICATOR.WEIGHTS']['stochastic']),
+		        "obv": float(self.config['INDICATOR.WEIGHTS']['obv']),
+		        "ma": float(self.config['INDICATOR.WEIGHTS']['ma']),
+		        "vol": float(self.config['INDICATOR.WEIGHTS']['vol'])}
+
 	def get_order_settings(self):
-		return {"volume": int(self.config['ORDER']['volume']),
+		return {"volume_const": float(self.config['ORDER']['volume_const']),
+		        "volume_percent": float(self.config['ORDER']['volume_percent'])/100,
 				"leverage": int(self.config['ORDER']['leverage'])}
 
 
 class ApiCallResult:
 	def __init__(self):
 		self.error = None
-
-@asynccontextmanager
-async def asafe(fn):
-	api_result = ApiCallResult()
-	try:
-		yield api_result
-	except (
-	ClientError, JSONDecodeError, RequestTimeout, DNSError, InvalidNonce, NetworkError, CancelledError) as e:
-		print(e.__class__.__name__, e, fn)
-		api_result.error = e.args
-		await asyncio.sleep(3)
-	except (InvalidOrder, ExchangeError, ExchangeNotAvailable) as e:
-		print(e.__class__.__name__, e, fn)
-		api_result.error = e.args
-		await asyncio.sleep(3)
-	except (ValueError, TimeoutError) as e:
-		print(e.__class__.__name__, e, fn)
-		api_result.error = e.args
-		await asyncio.sleep(3)
 
 @contextmanager
 def safe(fn):
@@ -98,18 +88,6 @@ def retry(fn: Callable) -> Callable:
 				res = fn(*args, **kwargs)
 				if s.error is None:
 					return res
-		raise Exception('Насяльника я не справился... Хер знает че тут произошло')
+		raise Exception('Извини я не справился... Не знаю что тут произошло')
 
-	@functools.wraps(fn)
-	async def awrapper(*args, **kwargs):
-		for _ in range(3):
-			async with asafe(fn) as s:
-				res = await fn(*args, **kwargs)
-				if s.error is None:
-					return res
-		raise Exception('Насяльника, извини, я не справился... Хер знает че ты от меня хочешь')
-
-	if inspect.iscoroutinefunction(fn):
-		return awrapper
-	else:
-		return wrapper
+	return wrapper
