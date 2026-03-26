@@ -29,7 +29,7 @@ def trade(ticker, side, amount, leverage = None):
 
 def main():
 	print('Получаю свечи по активам')
-	candles = exchange.get_ohlcv(indicator_settings['tf'], indicator_settings['period'])
+	candles = exchange.get_ohlcv(indicator_settings['tf'])
 	res = {}
 	for k, v in candles.items():
 		df = pd.DataFrame(v, columns=['time', 'open', 'high', 'low', 'close', 'volume'])
@@ -99,9 +99,12 @@ if __name__ == '__main__':
 	                        indicator_weights_settings['obv'], indicator_weights_settings['ma'],
 	                        indicator_weights_settings['vol'])
 
-	# main()
+	print(f'Привет! Я запустился, жду новую свечу, на {indicator_settings['tf']} таймфрейме')
 	while True:
 		now = time.time()
 		sleep_time = timeframe_to_shed[indicator_settings['tf']] - (now % timeframe_to_shed[indicator_settings['tf']])
 		time.sleep(sleep_time)
-		main()
+		try:
+			main()
+		except (KeyboardInterrupt, SystemExit):
+			pass

@@ -41,8 +41,7 @@ class ConfigHandler:
 		        "stoch_k": int(self.config['INDICATOR']['stoch_k']),
 		        "stoch_d": int(self.config['INDICATOR']['stoch_d']),
 		        "stoch_smooth": int(self.config['INDICATOR']['stoch_smooth']),
-		        "sma_lenght": int(self.config['INDICATOR']['sma_lenght']),
-		        "period": int(self.config['INDICATOR']['period'])}
+		        "sma_lenght": int(self.config['INDICATOR']['sma_lenght'])}
 
 	def get_indicator_weights_settings(self) -> dict:
 		return {"macd": float(self.config['INDICATOR.WEIGHTS']['macd']),
