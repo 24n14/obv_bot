@@ -1,6 +1,5 @@
 import threading
 import time
-from pprint import pprint
 
 import pandas as pd
 
@@ -10,7 +9,13 @@ import indicator
 
 
 def trade(ticker, side, amount, leverage = None):
-	print(f'Начал сделку по {ticker} в направлении {side}')
+	if 'USDC' in ticker:
+		balance = exchange.get_balance('USDC')
+		balance = f'{balance:.2f} USDC'
+	else:
+		balance = exchange.get_balance('USDT')
+		balance = f'{balance:.2f} USDT'
+	print(f'Начал сделку по {ticker} в направлении {side}, баланс = {balance}')
 	if leverage:
 		exchange.preparation_derivative(ticker, leverage)
 	orders = exchange.create_orders(ticker, side, amount)
@@ -32,6 +37,9 @@ def main():
 	candles = exchange.get_ohlcv(indicator_settings['tf'])
 	res = {}
 	for k, v in candles.items():
+		if len(v) < 300:
+			print(f'Слишком мало свечей для анализа на {k}')
+			continue
 		df = pd.DataFrame(v, columns=['time', 'open', 'high', 'low', 'close', 'volume'])
 		indicators = ind.calculate_indicators(df)
 		dir = ind.check_signals(indicators)
@@ -78,6 +86,7 @@ def main():
 
 if __name__ == '__main__':
 	timeframe_to_shed = {
+		'5m': 300,
 		'15m': 900,
 		'30m': 1800,
 		'1h': 3600,
@@ -100,6 +109,7 @@ if __name__ == '__main__':
 	                        indicator_weights_settings['vol'])
 
 	print(f'Привет! Я запустился, жду новую свечу, на {indicator_settings['tf']} таймфрейме')
+	main()
 	while True:
 		now = time.time()
 		sleep_time = timeframe_to_shed[indicator_settings['tf']] - (now % timeframe_to_shed[indicator_settings['tf']])

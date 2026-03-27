@@ -56,11 +56,11 @@ class Exchange:
 
 	@handlers.retry
 	def get_last_order(self, ticker):
-		timestamp = (int(time.time()) - 14700) * 1000 # 4 часа 5 минут
-		orders = self.cex.fetch_closed_orders(ticker, since=timestamp)[-1]
-		if not orders['amount']:
+		timestamp = (int(time.time()) - 14700) * 1000 # 4 часа 5 минут (из-за максимального TF 4h)
+		orders = self.cex.fetch_closed_orders(ticker, since=timestamp)
+		if not orders or not orders['amount']:
 			return None
-		return [orders['side'], orders['filled']]
+		return [orders[-1]['side'], orders[-1]['filled']]
 
 	@handlers.retry
 	def create_orders(self, ticker, side: str, amount: float):  # amount в BTC
