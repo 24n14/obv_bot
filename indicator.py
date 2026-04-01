@@ -1,4 +1,4 @@
-import pandas_ta as ta
+import pandas_ta_classic as ta
 
 
 class ObvMacd:
@@ -47,18 +47,11 @@ class ObvMacd:
 	def check_signals(self, df):
 		curr = df.iloc[-1]
 		prev = df.iloc[-2]
-		obv_over = self.crossover(curr['obv'], curr['obv_ema'], prev['obv'], prev['obv_ema'])
-		macd_over = self.crossover(curr['macd'], curr['macd_signal'], prev['macd'], prev['macd_signal'])
-		stoch_over = self.crossover(curr['stoch_k'], curr['stoch_d'], prev['stoch_k'], prev['stoch_d'])
-		trend_over = curr['close'] > curr[f'sma_{self.sma_lenght}']
-		obv_under = self.crossunder(curr['obv'], curr['obv_ema'], prev['obv'], prev['obv_ema'])
-		macd_under = self.crossunder(curr['macd'], curr['macd_signal'], prev['macd'], prev['macd_signal'])
-		stoch_under = self.crossunder(curr['stoch_k'], curr['stoch_d'], prev['stoch_k'], prev['stoch_d'])
-		trend_under = curr['close'] < curr[f'sma_{self.sma_lenght}']
-
-		return max(
-			[macd_over * self.macd_w, stoch_over * self.stoch_w, obv_over * self.obv_w, float(trend_over * self.ma_w),
-			 float(prev['candle_type'] * self.vol_w), 'buy'],
-			[macd_under * self.macd_w, stoch_under * self.stoch_w, obv_under * self.obv_w,
-			 float(trend_under * self.ma_w), float(prev['candle_type'] * self.vol_w), 'sell'],
-			key=lambda x: sum(x[:-1]))
+		obv = self.crossover(curr['obv'], curr['obv_ema'], prev['obv'], prev['obv_ema'])
+		macd = self.crossover(curr['macd'], curr['macd_signal'], prev['macd'], prev['macd_signal'])
+		stoch = self.crossover(curr['stoch_k'], curr['stoch_d'], prev['stoch_k'], prev['stoch_d'])
+		trend = curr['close'] > curr[f'sma_{self.sma_lenght}']
+		signal = [macd * self.macd_w, stoch * self.stoch_w, obv * self.obv_w, float(trend * self.ma_w),
+		          float(prev['candle_type'] * self.vol_w)]
+		signal.append('buy' if sum(signal) > 0 else 'sell')
+		return signal

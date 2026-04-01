@@ -65,12 +65,20 @@ class Exchange:
 	def create_orders(self, ticker, side: str, amount: float):  # amount в BTC
 		orders = []
 		price = self.get_price(ticker)
-		for i in range(-1, 2):
-			orders.append(self.cex.create_order(symbol=ticker,
-			                                    type='limit',
-			                                    side=side,
-			                                    amount=amount,
-			                                    price=price * (1 - i * 5 / 1000)))  # 1000 - десятая процента
+		if side == 'buy':
+			for i in range(-2, 1):
+				orders.append(self.cex.create_order(symbol=ticker,
+				                                    type='limit',
+				                                    side=side,
+				                                    amount=amount,
+				                                    price=price * (1 + i * 5 / 1000)))  # 1000 - десятая процента
+		else:
+			for i in range(0, 3):
+				orders.append(self.cex.create_order(symbol=ticker,
+				                                    type='limit',
+				                                    side=side,
+				                                    amount=amount,
+				                                    price=price * (1 + i * 5 / 1000)))  # 1000 - десятая процента
 		return [i['id'] for i in orders]
 
 	@handlers.retry

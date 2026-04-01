@@ -19,9 +19,9 @@ def trade(ticker, side, amount, leverage=None):
 	if leverage:
 		exchange.preparation_derivative(ticker, leverage)
 	orders = exchange.create_orders(ticker, side, amount)
-	print('Выставленные ордера: ', *orders)
+	print(f'Выставленные ордера {ticker}:', *orders)
 	closed_order = exchange.wait_close_one_order(ticker, orders)
-	print(f'Закрылся ордер: {closed_order}')
+	print(f'Закрылся ордер {ticker}:', *closed_order)
 	exchange.close_other_orders(ticker)
 	if 'USDC' in ticker:
 		balance = exchange.get_balance('USDC')
@@ -78,7 +78,10 @@ def main():
 		print('Совершаю сделки')
 		for i in threads:
 			i.start()
+		for i in threads:
 			i.join()
+	for i in user_tickers:
+		exchange.close_other_orders(i)
 	print('Всё отработал, жду следующую свечу')
 
 
@@ -109,10 +112,10 @@ if __name__ == '__main__':
 
 	print(f'Привет! Я запустился, жду новую свечу, на {indicator_settings['tf']} таймфрейме')
 	while True:
-		now = time.time()
-		sleep_time = timeframe_to_shed[indicator_settings['tf']] - (now % timeframe_to_shed[indicator_settings['tf']])
-		time.sleep(sleep_time)
 		try:
+			now = time.time()
+			sleep_time = timeframe_to_shed[indicator_settings['tf']] - (now % timeframe_to_shed[indicator_settings['tf']])
+			time.sleep(sleep_time)
 			main()
-		except (KeyboardInterrupt, SystemExit):
+		except (KeyboardInterrupt, SystemExit, Exception):
 			pass

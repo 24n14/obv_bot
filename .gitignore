@@ -1,10 +1,11 @@
 /workdir/config/api.toml
 /workdir
-
+/config.ini
+/indicator.py
 /indicator2.py
 /OBV_MACD_Indicator_v6.pine
 /workdir/config/providers.toml
-
+/requirements.txt
 /obv_macd_indicator.py
 /temp.py
 /.idea/vcs.xml
